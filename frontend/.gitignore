@@ -4,8 +4,19 @@ node_modules/
 out/
 build/
 dist/
-.env.local
-.env*.local
+
+# environment files, keep examples tracked if added later
+**/.env
+**/.env.local
+**/.env.development
+**/.env.development.local
+**/.env.test
+**/.env.test.local
+**/.env.production
+**/.env.production.local
+**/.env.*.local
+!**/.env.example
+
 *.log
 .DS_Store
 .vscode/
