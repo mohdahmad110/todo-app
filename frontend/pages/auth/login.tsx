@@ -10,7 +10,10 @@ import {
   Alert,
   Paper,
   CircularProgress,
+  InputAdornment,
+  IconButton,
 } from '@mui/material'
+import { Visibility, VisibilityOff } from '@mui/icons-material'
 import { apiClient } from '../../lib/apiClient'
 import { setAuthState, setAccessToken, setRefreshToken } from '../../store/authSlice'
 
@@ -25,6 +28,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -86,12 +90,25 @@ export default function Login() {
             <TextField
               fullWidth
               label="Password"
-              type="password"
+              type={showPassword ? 'text' : 'password'}
               name="password"
               value={formData.password}
               onChange={handleChange}
               required
               margin="normal"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                      size="small"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
 
             <Button

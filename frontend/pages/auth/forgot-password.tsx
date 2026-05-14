@@ -12,7 +12,10 @@ import {
   Stepper,
   Step,
   StepLabel,
+  InputAdornment,
+  IconButton,
 } from '@mui/material'
+import { Visibility, VisibilityOff } from '@mui/icons-material'
 import { apiClient } from '../../lib/apiClient'
 
 export default function ForgotPassword() {
@@ -25,6 +28,8 @@ export default function ForgotPassword() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -119,26 +124,52 @@ export default function ForgotPassword() {
                 onChange={(e) => setOtp(e.target.value)}
                 required
                 placeholder="000000"
-                maxLength={6}
                 margin="normal"
+                inputProps={{ maxLength: 6 }}
               />
               <TextField
                 fullWidth
                 label="New Password"
-                type="password"
+                type={showNewPassword ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 required
                 margin="normal"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        edge="end"
+                        size="small"
+                      >
+                        {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
               <TextField
                 fullWidth
                 label="Confirm Password"
-                type="password"
+                type={showConfirmPassword ? 'text' : 'password'}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 margin="normal"
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        edge="end"
+                        size="small"
+                      >
+                        {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
               <Button
                 fullWidth

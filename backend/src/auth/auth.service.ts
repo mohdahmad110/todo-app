@@ -3,6 +3,7 @@ import {
   BadRequestException,
   UnauthorizedException,
   ConflictException,
+  InternalServerErrorException,
 } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 import { UsersService } from '../users/users.service'
@@ -45,146 +46,238 @@ export class AuthService {
       })
     } catch (error) {
       console.error('Email send error:', error)
-      throw new BadRequestException('Failed to send OTP email')
+      throw new InternalServerErrorException('Failed to send OTP email. Please try again later.')
     }
   }
 
   async signup(signupDto: SignupDto) {
-    const existingUser = await this.usersService.findByEmail(signupDto.email)
-    if (existingUser) {
-      throw new ConflictException('Email already registered')
-    }
+    try {
+      // Validate email format (basic validation, main validation done in DTO)
+      const emailLower = signupDto.email.toLowerCase()
 
-    const user = await this.usersService.create(
-      signupDto.email,
-      signupDto.password,
-      signupDto.name,
-    )
+      // Check if user already exists
+      const existingUser = await this.usersService.findByEmail(emailLower)
+      if (existingUser) {
+        throw new ConflictException('Email is already registered. Please login or use a different email.')
+      }
 
-    const otp = this.generateOtp()
-    const otpHash = await bcrypt.hash(otp, 10)
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+      // Create new user
+      const user = await this.usersService.create(emailLower, signupDto.password, signupDto.name?.trim())
 
-    await this.usersService.updateOtp(signupDto.email, otpHash, expiresAt)
-    await this.sendOtpEmail(signupDto.email, otp)
+      // Generate and send OTP
+      const otp = this.generateOtp()
+      const otpHash = await bcrypt.hash(otp, 10)
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
 
-    return {
-      message: 'Signup successful. OTP sent to email.',
-      email: user.email,
+      await this.usersService.updateOtp(emailLower, otpHash, expiresAt)
+      await this.sendOtpEmail(emailLower, otp)
+
+      return {
+        message: 'Signup successful. OTP sent to your email.',
+        email: user.email,
+      }
+    } catch (error) {
+      if (error instanceof ConflictException || error instanceof BadRequestException || error instanceof InternalServerErrorException) {
+        throw error
+      }
+      console.error('Signup error:', error)
+      throw new InternalServerErrorException('An error occurred during signup. Please try again.')
     }
   }
 
   async verifyOtp(verifyOtpDto: VerifyOtpDto) {
-    const user = await this.usersService.findByEmail(verifyOtpDto.email)
-    if (!user) {
-      throw new UnauthorizedException('User not found')
-    }
+    try {
+      const emailLower = verifyOtpDto.email.toLowerCase()
 
-    if (!user.otpHash || !user.otpExpiresAt) {
-      throw new BadRequestException('No OTP found for this user')
-    }
+      // Validate OTP format
+      if (!/^[0-9]{6}$/.test(verifyOtpDto.otp)) {
+        throw new BadRequestException('OTP must be a 6-digit number')
+      }
 
-    if (new Date() > user.otpExpiresAt) {
-      throw new BadRequestException('OTP has expired')
-    }
+      // Find user
+      const user = await this.usersService.findByEmail(emailLower)
+      if (!user) {
+        throw new UnauthorizedException('User not found. Please signup first.')
+      }
 
-    const isOtpValid = await bcrypt.compare(verifyOtpDto.otp, user.otpHash)
-    if (!isOtpValid) {
-      throw new UnauthorizedException('Invalid OTP')
-    }
+      // Check if OTP exists
+      if (!user.otpHash || !user.otpExpiresAt) {
+        throw new BadRequestException('No OTP found. Please request a new one.')
+      }
 
-    await this.usersService.verifyOtp(verifyOtpDto.email)
-    return { message: 'Email verified successfully' }
+      // Check if OTP expired
+      if (new Date() > user.otpExpiresAt) {
+        throw new BadRequestException('OTP has expired. Please request a new one.')
+      }
+
+      // Verify OTP
+      const isOtpValid = await bcrypt.compare(verifyOtpDto.otp, user.otpHash)
+      if (!isOtpValid) {
+        throw new UnauthorizedException('Invalid OTP. Please check and try again.')
+      }
+
+      // Mark email as verified
+      await this.usersService.verifyOtp(emailLower)
+      return { message: 'Email verified successfully. You can now login.' }
+    } catch (error) {
+      if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
+        throw error
+      }
+      console.error('OTP verification error:', error)
+      throw new InternalServerErrorException('An error occurred during OTP verification. Please try again.')
+    }
   }
 
   async login(loginDto: LoginDto) {
-    const user = await this.usersService.findByEmail(loginDto.email)
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials')
-    }
+    try {
+      const emailLower = loginDto.email.toLowerCase()
 
-    if (!user.isEmailVerified) {
-      throw new UnauthorizedException('Email not verified. Please verify your email first.')
-    }
+      // Find user
+      const user = await this.usersService.findByEmail(emailLower)
+      if (!user) {
+        throw new UnauthorizedException('Invalid email or password.')
+      }
 
-    const isPasswordValid = await this.usersService.verifyPassword(user, loginDto.password)
-    if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials')
-    }
+      // Check if email is verified
+      if (!user.isEmailVerified) {
+        throw new UnauthorizedException('Email not verified. Please verify your email first.')
+      }
 
-    const accessToken = this.jwtService.sign(
-      { sub: user._id, email: user.email },
-      { expiresIn: '15m' },
-    )
+      // Verify password
+      const isPasswordValid = await this.usersService.verifyPassword(user, loginDto.password)
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('Invalid email or password.')
+      }
 
-    const refreshToken = this.jwtService.sign(
-      { sub: user._id },
-      { expiresIn: '7d', secret: process.env.JWT_REFRESH_TOKEN_SECRET },
-    )
+      // Generate tokens
+      const accessToken = this.jwtService.sign(
+        { sub: user._id, email: user.email },
+        { expiresIn: '15m' },
+      )
 
-    return {
-      accessToken,
-      refreshToken,
-      user: {
-        id: user._id,
-        email: user.email,
-        name: user.name,
-      },
+      const refreshToken = this.jwtService.sign(
+        { sub: user._id },
+        { expiresIn: '7d', secret: process.env.JWT_REFRESH_TOKEN_SECRET },
+      )
+
+      return {
+        message: 'Login successful',
+        accessToken,
+        refreshToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+        },
+      }
+    } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw error
+      }
+      console.error('Login error:', error)
+      throw new InternalServerErrorException('An error occurred during login. Please try again.')
     }
   }
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
-    const user = await this.usersService.findByEmail(forgotPasswordDto.email)
-    if (!user) {
-      // Don't reveal if email exists
-      return { message: 'If email exists, OTP will be sent' }
+    try {
+      const emailLower = forgotPasswordDto.email.toLowerCase()
+
+      const user = await this.usersService.findByEmail(emailLower)
+      if (!user) {
+        // Don't reveal if email exists for security
+        return { message: 'If an account with this email exists, an OTP will be sent.' }
+      }
+
+      // Generate and send OTP
+      const otp = this.generateOtp()
+      const otpHash = await bcrypt.hash(otp, 10)
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
+
+      await this.usersService.updateOtp(emailLower, otpHash, expiresAt)
+      await this.sendOtpEmail(emailLower, otp)
+
+      return { message: 'If an account with this email exists, an OTP will be sent.' }
+    } catch (error) {
+      if (error instanceof InternalServerErrorException) {
+        throw error
+      }
+      console.error('Forgot password error:', error)
+      throw new InternalServerErrorException('An error occurred. Please try again.')
     }
-
-    const otp = this.generateOtp()
-    const otpHash = await bcrypt.hash(otp, 10)
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
-
-    await this.usersService.updateOtp(forgotPasswordDto.email, otpHash, expiresAt)
-    await this.sendOtpEmail(forgotPasswordDto.email, otp)
-
-    return { message: 'OTP sent to email' }
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
-    const user = await this.usersService.findByEmail(resetPasswordDto.email)
-    if (!user) {
-      throw new UnauthorizedException('User not found')
-    }
+    try {
+      // Validate new password is different from OTP (common user mistake)
+      if (resetPasswordDto.otp === resetPasswordDto.newPassword) {
+        throw new BadRequestException('New password cannot be the same as OTP.')
+      }
 
-    if (!user.otpHash || !user.otpExpiresAt) {
-      throw new BadRequestException('No OTP found')
-    }
+      const emailLower = resetPasswordDto.email.toLowerCase()
 
-    if (new Date() > user.otpExpiresAt) {
-      throw new BadRequestException('OTP has expired')
-    }
+      // Find user
+      const user = await this.usersService.findByEmail(emailLower)
+      if (!user) {
+        throw new UnauthorizedException('User not found.')
+      }
 
-    const isOtpValid = await bcrypt.compare(resetPasswordDto.otp, user.otpHash)
-    if (!isOtpValid) {
-      throw new UnauthorizedException('Invalid OTP')
-    }
+      // Check if OTP exists
+      if (!user.otpHash || !user.otpExpiresAt) {
+        throw new BadRequestException('No OTP found. Please request password reset again.')
+      }
 
-    await this.usersService.updatePassword(resetPasswordDto.email, resetPasswordDto.newPassword)
-    return { message: 'Password reset successful' }
+      // Check if OTP expired
+      if (new Date() > user.otpExpiresAt) {
+        throw new BadRequestException('OTP has expired. Please request password reset again.')
+      }
+
+      // Verify OTP
+      const isOtpValid = await bcrypt.compare(resetPasswordDto.otp, user.otpHash)
+      if (!isOtpValid) {
+        throw new UnauthorizedException('Invalid OTP.')
+      }
+
+      // Update password
+      await this.usersService.updatePassword(emailLower, resetPasswordDto.newPassword)
+      return { message: 'Password reset successful. You can now login with your new password.' }
+    } catch (error) {
+      if (error instanceof UnauthorizedException || error instanceof BadRequestException) {
+        throw error
+      }
+      console.error('Reset password error:', error)
+      throw new InternalServerErrorException('An error occurred during password reset. Please try again.')
+    }
   }
 
   async refreshToken(token: string) {
     try {
+      if (!token || token.trim().length === 0) {
+        throw new BadRequestException('Refresh token is required.')
+      }
+
       const decoded = this.jwtService.verify(token, {
         secret: process.env.JWT_REFRESH_TOKEN_SECRET,
       })
+
       const accessToken = this.jwtService.sign(
         { sub: decoded.sub },
         { expiresIn: '15m' },
       )
+
       return { accessToken }
     } catch (error) {
-      throw new UnauthorizedException('Invalid or expired refresh token')
+      if (error.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('Refresh token has expired. Please login again.')
+      }
+      if (error.name === 'JsonWebTokenError') {
+        throw new UnauthorizedException('Invalid refresh token.')
+      }
+      if (error instanceof BadRequestException) {
+        throw error
+      }
+      console.error('Refresh token error:', error)
+      throw new UnauthorizedException('Invalid or expired refresh token. Please login again.')
     }
   }
 }

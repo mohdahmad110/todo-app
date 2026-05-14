@@ -70,8 +70,8 @@ export default function VerifyOtp() {
               onChange={(e) => setOtp(e.target.value)}
               required
               placeholder="000000"
-              maxLength={6}
               margin="normal"
+              inputProps={{ maxLength: 6 }}
             />
 
             <Button

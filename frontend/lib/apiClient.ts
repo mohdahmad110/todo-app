@@ -4,9 +4,9 @@ export const apiClient = {
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const accessToken = typeof window !== 'undefined' ? localStorage.getItem('accessToken') : null
     
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     }
 
     if (accessToken) {
@@ -71,28 +71,28 @@ export const apiClient = {
 
   // Todos endpoints
   getTodos() {
-    return this.request('/todos', { method: 'GET' })
+    return this.request<any[]>('/todos', { method: 'GET' })
   },
 
   getTodoById(id: string) {
-    return this.request(`/todos/${id}`, { method: 'GET' })
+    return this.request<any>(`/todos/${id}`, { method: 'GET' })
   },
 
   createTodo(title: string, description?: string) {
-    return this.request('/todos', {
+    return this.request<any>('/todos', {
       method: 'POST',
       body: JSON.stringify({ title, description }),
     })
   },
 
   updateTodo(id: string, title?: string, description?: string, completed?: boolean) {
-    return this.request(`/todos/${id}`, {
+    return this.request<any>(`/todos/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ title, description, completed }),
     })
   },
 
   deleteTodo(id: string) {
-    return this.request(`/todos/${id}`, { method: 'DELETE' })
+    return this.request<any>(`/todos/${id}`, { method: 'DELETE' })
   },
 }
