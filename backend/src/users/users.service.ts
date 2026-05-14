@@ -94,4 +94,13 @@ export class UsersService {
       throw new InternalServerErrorException('Failed to verify password. Please try again.')
     }
   }
+
+  async deleteByEmail(email: string) {
+    try {
+      return await this.userModel.deleteOne({ email: email.toLowerCase() })
+    } catch (error) {
+      console.error('Delete user error:', error)
+      throw new InternalServerErrorException('Failed to delete user. Please try again.')
+    }
+  }
 }

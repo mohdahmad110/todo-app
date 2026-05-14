@@ -65,12 +65,18 @@ export class AuthService {
       const user = await this.usersService.create(emailLower, signupDto.password, signupDto.name?.trim())
 
       // Generate and send OTP
-      const otp = this.generateOtp()
-      const otpHash = await bcrypt.hash(otp, 10)
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+      try {
+        const otp = this.generateOtp()
+        const otpHash = await bcrypt.hash(otp, 10)
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
 
-      await this.usersService.updateOtp(emailLower, otpHash, expiresAt)
-      await this.sendOtpEmail(emailLower, otp)
+        await this.usersService.updateOtp(emailLower, otpHash, expiresAt)
+        await this.sendOtpEmail(emailLower, otp)
+      } catch (error) {
+        // If OTP sending fails, delete the user to allow signup retry
+        await this.usersService.deleteByEmail(emailLower)
+        throw error
+      }
 
       return {
         message: 'Signup successful. OTP sent to your email.',
