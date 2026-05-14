@@ -12,6 +12,9 @@ import {
   CircularProgress,
   InputAdornment,
   IconButton,
+  Card,
+  FormControlLabel,
+  Checkbox,
 } from '@mui/material'
 import { Visibility, VisibilityOff } from '@mui/icons-material'
 import { apiClient } from '../../lib/apiClient'
@@ -29,6 +32,7 @@ export default function Login() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -53,6 +57,15 @@ export default function Login() {
         })
       )
 
+      // Store remember me flag and user data if checked
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true')
+        localStorage.setItem('userData', JSON.stringify(response.user))
+      } else {
+        localStorage.removeItem('rememberMe')
+        localStorage.removeItem('userData')
+      }
+
       setSuccess('Login successful! Redirecting to todos...')
       
       setTimeout(() => {
@@ -66,10 +79,27 @@ export default function Login() {
   }
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ mt: 8, mb: 4 }}>
-        <Paper elevation={3} sx={{ p: 4 }}>
-          <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0F1419 0%, #1a242f 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: 4,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      <Container maxWidth="sm">
+        <Card
+          sx={{
+            p: 4,
+            backgroundColor: '#1a1f2e',
+            backgroundImage: 'linear-gradient(180deg, rgba(26, 31, 46, 1) 0%, rgba(76, 45, 67, 0.2) 100%)',
+          }}
+        >
+          <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold', textAlign: 'center' }}>
             Login
           </Typography>
 
@@ -111,6 +141,23 @@ export default function Login() {
               }}
             />
 
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  sx={{
+                    color: '#17A2B8',
+                    '&.Mui-checked': {
+                      color: '#FFD700',
+                    },
+                  }}
+                />
+              }
+              label="Remember me"
+              sx={{ mt: 2, mb: 1 }}
+            />
+
             <Button
               fullWidth
               variant="contained"
@@ -122,13 +169,13 @@ export default function Login() {
             </Button>
           </form>
 
-          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', mt: 2 }}>
+          <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center', mt: 2, flexWrap: 'wrap' }}>
             <Typography variant="body2">
               Don't have an account?{' '}
               <Button
                 color="primary"
                 onClick={() => router.push('/auth/signup')}
-                sx={{ textTransform: 'none' }}
+                sx={{ textTransform: 'none', fontWeight: 600 }}
               >
                 Sign up
               </Button>
@@ -139,13 +186,13 @@ export default function Login() {
             <Button
               color="secondary"
               onClick={() => router.push('/auth/forgot-password')}
-              sx={{ textTransform: 'none' }}
+              sx={{ textTransform: 'none', fontWeight: 600 }}
             >
               Forgot Password?
             </Button>
           </Typography>
-        </Paper>
-      </Box>
-    </Container>
+        </Card>
+      </Container>
+    </Box>
   )
 }

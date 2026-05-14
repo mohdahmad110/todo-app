@@ -12,6 +12,7 @@ import {
   CircularProgress,
   InputAdornment,
   IconButton,
+  Card,
 } from '@mui/material'
 import { Visibility, VisibilityOff } from '@mui/icons-material'
 import { apiClient } from '../../lib/apiClient'
@@ -51,10 +52,27 @@ export default function Signup() {
   }
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ mt: 8, mb: 4 }}>
-        <Paper elevation={3} sx={{ p: 4 }}>
-          <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold' }}>
+    <Box
+      sx={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #0F1419 0%, #1a242f 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        py: 4,
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      <Container maxWidth="sm">
+        <Card
+          sx={{
+            p: 4,
+            backgroundColor: '#1a1f2e',
+            backgroundImage: 'linear-gradient(180deg, rgba(26, 31, 46, 1) 0%, rgba(76, 45, 67, 0.2) 100%)',
+          }}
+        >
+          <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold', textAlign: 'center' }}>
             Sign Up
           </Typography>
 
@@ -120,13 +138,13 @@ export default function Signup() {
             <Button
               color="primary"
               onClick={() => router.push('/auth/login')}
-              sx={{ textTransform: 'none' }}
+              sx={{ textTransform: 'none', fontWeight: 600 }}
             >
               Login
             </Button>
           </Typography>
-        </Paper>
-      </Box>
-    </Container>
+        </Card>
+      </Container>
+    </Box>
   )
 }

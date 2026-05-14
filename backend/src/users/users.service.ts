@@ -51,7 +51,7 @@ export class UsersService {
       return await this.userModel.findOneAndUpdate(
         { email: email.toLowerCase() },
         { otpHash, otpExpiresAt: expiresAt },
-        { new: true }
+        { returnDocument: 'after' }
       )
     } catch (error) {
       console.error('Update OTP error:', error)
@@ -64,7 +64,7 @@ export class UsersService {
       return await this.userModel.findOneAndUpdate(
         { email: email.toLowerCase() },
         { isEmailVerified: true, otpHash: null, otpExpiresAt: null },
-        { new: true }
+        { returnDocument: 'after' }
       )
     } catch (error) {
       console.error('Verify OTP error:', error)
@@ -78,7 +78,7 @@ export class UsersService {
       return await this.userModel.findOneAndUpdate(
         { email: email.toLowerCase() },
         { passwordHash: hashedPassword, otpHash: null, otpExpiresAt: null },
-        { new: true }
+        { returnDocument: 'after' }
       )
     } catch (error) {
       console.error('Update password error:', error)

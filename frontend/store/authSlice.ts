@@ -42,6 +42,8 @@ export const authSlice = createSlice({
       state.error = null
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
+      localStorage.removeItem('rememberMe')
+      localStorage.removeItem('userData')
     },
     setAccessToken: (state, action: PayloadAction<string>) => {
       state.accessToken = action.payload

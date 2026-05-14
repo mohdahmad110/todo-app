@@ -104,7 +104,7 @@ export class TodosService {
           userId: userObjectId,
         },
         updateData,
-        { new: true },
+        { returnDocument: 'after' },
       )
 
       if (!todo) {

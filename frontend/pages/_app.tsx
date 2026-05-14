@@ -2,11 +2,10 @@ import { useEffect } from 'react'
 import type { AppProps } from 'next/app'
 import { Provider, useDispatch } from 'react-redux'
 import { CssBaseline } from '@mui/material'
-import { ThemeProvider, createTheme } from '@mui/material/styles'
+import { ThemeProvider } from '@mui/material/styles'
 import store from '../store/store'
-import { setAccessToken, setRefreshToken } from '../store/authSlice'
-
-const theme = createTheme()
+import { setAccessToken, setRefreshToken, setAuthState } from '../store/authSlice'
+import { theme } from '../lib/theme'
 
 function AppInitializer({ children }: { children: React.ReactNode }) {
   const dispatch = useDispatch()
@@ -15,12 +14,31 @@ function AppInitializer({ children }: { children: React.ReactNode }) {
     // Initialize auth state from localStorage
     const accessToken = localStorage.getItem('accessToken')
     const refreshToken = localStorage.getItem('refreshToken')
+    const userData = localStorage.getItem('userData')
     
-    if (accessToken) {
+    // If tokens exist, restore the session
+    if (accessToken && refreshToken) {
       dispatch(setAccessToken(accessToken))
-    }
-    if (refreshToken) {
       dispatch(setRefreshToken(refreshToken))
+      
+      // Try to restore user data if available
+      let user = null
+      if (userData) {
+        try {
+          user = JSON.parse(userData)
+        } catch (e) {
+          // Invalid JSON, ignore
+        }
+      }
+      
+      // Set authenticated state with or without user data
+      dispatch(
+        setAuthState({
+          user,
+          isEmailVerified: true,
+          isAuthenticated: true,
+        })
+      )
     }
   }, [dispatch])
 
